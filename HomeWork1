@@ -1,0 +1,120 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": []
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "code",
+      "source": [
+        "pip install pyspark"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "6vRbYQiOo31g",
+        "outputId": "bf9a57ca-7100-4b30-bb8b-ccb4a0368523"
+      },
+      "execution_count": 2,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Collecting pyspark\n",
+            "  Downloading pyspark-3.5.1.tar.gz (317.0 MB)\n",
+            "\u001b[2K     \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m317.0/317.0 MB\u001b[0m \u001b[31m2.3 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\n",
+            "\u001b[?25h  Preparing metadata (setup.py) ... \u001b[?25l\u001b[?25hdone\n",
+            "Requirement already satisfied: py4j==0.10.9.7 in /usr/local/lib/python3.10/dist-packages (from pyspark) (0.10.9.7)\n",
+            "Building wheels for collected packages: pyspark\n",
+            "  Building wheel for pyspark (setup.py) ... \u001b[?25l\u001b[?25hdone\n",
+            "  Created wheel for pyspark: filename=pyspark-3.5.1-py2.py3-none-any.whl size=317488491 sha256=a49962c8e33cb816a48c8b8a2c08d35fc2164ae73be0f54c91043661311d7856\n",
+            "  Stored in directory: /root/.cache/pip/wheels/80/1d/60/2c256ed38dddce2fdd93be545214a63e02fbd8d74fb0b7f3a6\n",
+            "Successfully built pyspark\n",
+            "Installing collected packages: pyspark\n",
+            "Successfully installed pyspark-3.5.1\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 6,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "a_qxPBgXoyib",
+        "outputId": "d5a70c7a-de2c-4994-f2fc-48b87b3d0c61"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "+-------------+\n",
+            "|employee_name|\n",
+            "+-------------+\n",
+            "|          Joe|\n",
+            "+-------------+\n",
+            "\n"
+          ]
+        }
+      ],
+      "source": [
+        "from pyspark.sql import SparkSession\n",
+        "from pyspark.sql.functions import col\n",
+        "\n",
+        "# Инициализация сессии Spark\n",
+        "spark = SparkSession.builder.appName(\"Сотрудники, зарабатывающие больше своих менеджеров\").getOrCreate()\n",
+        "\n",
+        "# Пример данных\n",
+        "data = [\n",
+        "    (1, 'Joe', 70, 3),\n",
+        "    (2, 'Henry', 80, 4),\n",
+        "    (3, 'Sam', 50, None),\n",
+        "    (4, 'Max', 90, None)\n",
+        "]\n",
+        "\n",
+        "# Создание DataFrame\n",
+        "columns = ['id', 'name', 'salary', 'managerID']\n",
+        "df = spark.createDataFrame(data, columns)\n",
+        "\n",
+        "# Создание алиасов для самоприсоединения\n",
+        "df_employee = df.alias('employee')\n",
+        "df_manager = df.alias('manager')\n",
+        "\n",
+        "# Присоединение DataFrame к самому себе, где employee.managerID = manager.id\n",
+        "df_joined = df_employee.join(df_manager, col('employee.managerID') == col('manager.id'), 'left_outer') \\\n",
+        "              .select(\n",
+        "                  col('employee.id').alias('employee_id'),\n",
+        "                  col('employee.name').alias('employee_name'),\n",
+        "                  col('employee.salary').alias('employee_salary'),\n",
+        "                  col('manager.salary').alias('manager_salary')\n",
+        "              )\n",
+        "\n",
+        "# Фильтрация, где зарплата сотрудника больше, чем у его менеджера\n",
+        "df_result = df_joined.where(col('employee_salary') > col('manager_salary')) \\\n",
+        "                     .select('employee_name')\n",
+        "\n",
+        "# Вывод результатов\n",
+        "df_result.show()\n",
+        "\n",
+        "# Завершение сессии Spark\n",
+        "spark.stop()\n",
+        "\n"
+      ]
+    }
+  ]
+}
